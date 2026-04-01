@@ -1,0 +1,407 @@
+---
+title: "Predictors of Scene Timing Performance Following Concussion"
+subtitle: "Multiple Regression Analysis — PSYC 6132"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    number_sections: false
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo      = FALSE,
+  warning   = FALSE,
+  message   = FALSE,
+  fig.align = "center",
+  fig.width  = 9,
+  fig.height = 5.5
+)
+
+library(ggplot2)
+library(car)
+library(gridExtra)
+library(readxl)
+library(dagitty)
+library(ggdag)
+library(knitr)
+library(kableExtra)
+
+df <- read_excel("Final Presentation Dataset.xlsx")
+presentation_data <- na.omit(df)
+
+model <- lm(`8TimingComp` ~ AGE + Sex_Recode_F1M0 + DHI + RPQ_3 + RPQ_13 +
+              DaysSinceLastConcussion,
+            data = presentation_data)
+```
+
+---
+
+# a) Research Problem & Theoretical Rationale
+
+Concussion is a mild traumatic brain injury that disrupts cognitive and sensorimotor processing. Individuals recovering from concussion commonly experience dizziness, impaired balance, slowed reaction times, and difficulties with visual-spatial navigation — all of which may impair performance on timed, real-world tasks.
+
+The **scene timing composite** (8TimingComp) captures the efficiency with which a participant completes a structured scene task, providing an ecologically valid index of functional performance. We hypothesise that **post-concussion symptom severity** — as measured by validated clinical scales — will predict slower (i.e., worse) performance on this task, over and above the effects of demographic characteristics and time since injury.
+
+---
+
+# b) Variables
+
+**Criterion variable**
+
+```{r criterion-table}
+criterion <- data.frame(
+  Variable    = "8TimingComp",
+  Description = "Scene completion time composite",
+  Scale       = "Continuous (z-scored composite; higher = slower performance)"
+)
+kable(criterion) |>
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+```
+
+**Predictors**
+
+```{r predictor-table}
+predictors <- data.frame(
+  Variable = c("AGE", "Sex_Recode_F1M0", "DHI", "RPQ_3", "RPQ_13",
+               "DaysSinceLastConcussion"),
+  Description = c(
+    "Participant age",
+    "Biological sex",
+    "Dizziness Handicap Inventory",
+    "Rivermead Post-Concussion Symptoms — 3 early symptoms",
+    "Rivermead Post-Concussion Symptoms — 13 later symptoms",
+    "Days elapsed since most recent concussion (control variable)"
+  ),
+  Scale = c(
+    "Continuous (years)",
+    "Binary (0 = Male, 1 = Female)",
+    "Continuous (0–100; higher = greater dizziness handicap)",
+    "Continuous (0–12; higher = more severe)",
+    "Continuous (0–52; higher = more severe)",
+    "Continuous (days)"
+  )
+)
+kable(predictors) |>
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+```
+
+---
+
+# c) Regression Equation
+
+The model takes the form:
+
+$$\hat{Y} = b_0 + b_1(\text{AGE}) + b_2(\text{Sex}) + b_3(\text{DHI}) + b_4(\text{RPQ\_3}) + b_5(\text{RPQ\_13}) + b_6(\text{DaysSinceLastConcussion}) + \varepsilon$$
+
+Where $\hat{Y}$ is the predicted scene timing composite, $b_0$ is the intercept, $b_1$–$b_6$ are the unstandardised regression coefficients, and $\varepsilon$ is the residual error term.
+
+```{r coef-table}
+coef_df <- as.data.frame(summary(model)$coefficients)
+coef_df <- round(coef_df, 3)
+coef_df$Predictor <- c("Intercept", "AGE", "Sex (F=1, M=0)",
+                        "DHI", "RPQ_3", "RPQ_13",
+                        "Days Since Last Concussion")
+coef_df <- coef_df[, c("Predictor", "Estimate", "Std. Error", "t value", "Pr(>|t|)")]
+names(coef_df) <- c("Predictor", "b", "SE", "t", "p")
+
+kable(coef_df, align = "lrrrr") |>
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+```
+
+**DAG: Variable Relationships**
+
+```{r dag, fig.height=5.5}
+dag <- dagitty('
+dag {
+  AGE                     [pos = "0,1"]
+  Sex                     [pos = "0,2"]
+  DaysSinceLastConcussion [pos = "0,3"]
+  DHI                     [pos = "1,1"]
+  RPQ_3                   [pos = "1,2"]
+  RPQ_13                  [pos = "1,3"]
+  TimingComp              [outcome, pos = "2,2"]
+
+  AGE -> DHI; AGE -> RPQ_3; AGE -> RPQ_13; AGE -> TimingComp
+  Sex -> DHI; Sex -> RPQ_3; Sex -> RPQ_13; Sex -> TimingComp
+  DaysSinceLastConcussion -> DHI
+  DaysSinceLastConcussion -> RPQ_3
+  DaysSinceLastConcussion -> RPQ_13
+  DaysSinceLastConcussion -> TimingComp
+  DHI -> TimingComp; RPQ_3 -> TimingComp; RPQ_13 -> TimingComp
+}
+')
+
+node_labels <- c(
+  AGE = "AGE", Sex = "Sex",
+  DaysSinceLastConcussion = "Days Since\nLast Concussion",
+  DHI = "DHI", RPQ_3 = "RPQ_3", RPQ_13 = "RPQ_13",
+  TimingComp = "Scene Timing\nComposite"
+)
+
+tidy_dagitty(dag) |>
+  ggdag(text = FALSE, use_labels = "name") +
+  geom_dag_point(aes(color = name), size = 16, show.legend = FALSE) +
+  geom_dag_edges(edge_colour = "gray40",
+                 arrow_directed = grid::arrow(length = grid::unit(7, "pt"),
+                                              type = "closed")) +
+  geom_dag_label_repel(aes(label = node_labels[name]),
+                       size = 3.4, fontface = "bold",
+                       box.padding = 0.4, label.padding = 0.25,
+                       fill = "white", colour = "black") +
+  scale_color_brewer(palette = "Set2") +
+  labs(title = "DAG: Predictors of Scene Timing Composite") +
+  theme_dag()
+```
+
+---
+
+# d) Critical Test
+
+The critical elements are the **symptom severity predictors**: DHI, RPQ_3, and RPQ_13.
+
+The central hypothesis is that **greater post-concussion symptom burden predicts worse (slower) scene timing performance**, even after controlling for age, sex, and days since last concussion. Specifically, we expect one or more of $b_3$ (DHI), $b_4$ (RPQ_3), and $b_5$ (RPQ_13) to be **positive and statistically significant** (*p* < .05), indicating that higher symptom scores are associated with a higher (worse) timing composite.
+
+The inclusion of **DaysSinceLastConcussion** as a covariate is important: without it, the symptom coefficients could be confounded by recovery duration — symptom scores naturally decrease over time, and performance may improve independently of symptom level. Controlling for days since injury isolates the *concurrent* relationship between symptom severity and performance.
+
+---
+
+# e) Assumption Checks
+
+## {.tabset}
+
+### 1. Linearity
+
+**Residuals vs. Fitted (composite)**
+
+```{r linearity-rvf, fig.height=5}
+plot(model, 1)
+```
+
+The linearity assumption requires that the mean of $\epsilon_i$ is zero. Therefore, we look for random scatter around the horizontal zero line. A systematic curve would indicate non-linearity in the model's linear combination of predictors.
+
+**Added-Variable Plots (per predictor)**
+
+```{r linearity-avplots, fig.height=6}
+avPlots(model,
+        main = "Added-Variable Plots",
+        col  = "steelblue", col.lines = "red")
+```
+
+Each panel shows the unique linear relationship between one predictor and the outcome after partialling out all others. A roughly linear trend in each panel is expected; a curve flags a problem for that specific predictor.
+
+> **Verdict:** *The random cloud shape with relatively consistent spread across its straight-line trend indicates that the linearity assumption is met.*
+
+---
+
+### 2. Normality
+
+**Q-Q Plot of Residuals**
+
+```{r normality, fig.height=5}
+plot(model, 2)
+```
+
+The normality assumption checks whether the residuals are normally distributed. Points should follow the diagonal reference line closely. Systematic S-curves or pronounced heavy tails indicate normality violations. In smaller samples like ours, this can inflate Type I error rates and distort confidence intervals.
+
+> **Verdict:** *Upon inspection of the Q-Q plot, the residuals appear to follow the diagonal reference line closely, suggesting that the normality assumption is met.*
+
+---
+
+### 3. Homoscedasticity
+
+**Scale-Location Plot**
+
+```{r homoscedasticity, fig.height=5}
+plot(model, 3)
+```
+
+The assumption of homoscedasticity verifies that the variance of the residuals is constant across all levels of the fitted values. The LOESS line should be roughly horizontal with consistent spread across the range of fitted values, meaning the cloud of data points should be evenly distributed around the line, with no visibly narrower or wider regions. A rising trend or funnel shape indicates heteroscedasticity, which produces biased standard errors and distorts *p*-values and confidence intervals.
+
+> **Verdict:** *Judging from the*  
+
+---
+
+### 4. Independence
+
+**Residuals vs. Observation Order**
+
+```{r independence, fig.height=5}
+std_res <- rstandard(model)
+n       <- length(std_res)
+
+ggplot(data.frame(index = 1:n, std_res),
+       aes(x = index, y = std_res)) +
+  geom_point(color = "steelblue", alpha = 0.7) +
+  geom_line(color  = "steelblue", alpha = 0.3) +
+  geom_hline(yintercept =  0, color = "red",    linewidth = 1) +
+  geom_hline(yintercept =  2, color = "gray50", linetype = "dashed") +
+  geom_hline(yintercept = -2, color = "gray50", linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "orange", linewidth = 0.8) +
+  labs(title = "Residuals vs. Observation Order",
+       x = "Observation Index", y = "Standardised Residuals") +
+  theme_minimal(base_size = 13)
+```
+
+No systematic trend, wave, or drift across the observation sequence is expected. A pattern suggests autocorrelation or a data-collection order effect, which violates the assumption that observations are independent.
+
+> **Verdict:** *As there is no visible pattern within the plot, the independence assumption appears to be met.*
+
+---
+
+### 5. Multicollinearity
+
+**Predictor Correlation Heat Map**
+
+```{r multicollinearity-heatmap, fig.height=5}
+cont_preds <- presentation_data[, c("AGE", "DHI", "RPQ_3", "RPQ_13",
+                                     "DaysSinceLastConcussion")]
+cor_matrix <- cor(cont_preds, use = "complete.obs")
+cor_df     <- as.data.frame(as.table(cor_matrix))
+names(cor_df) <- c("Var1", "Var2", "Correlation")
+
+ggplot(cor_df, aes(x = Var1, y = Var2, fill = Correlation)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Correlation, 2)), size = 4, fontface = "bold") +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#D6604D",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Predictor Correlation Heat Map") +
+  theme_minimal(base_size = 13) +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+**VIF Bar Chart**
+
+```{r multicollinearity-vif, fig.height=4.5}
+vif_vals <- vif(model)
+vif_df   <- data.frame(Predictor = names(vif_vals), VIF = as.numeric(vif_vals))
+
+ggplot(vif_df, aes(x = reorder(Predictor, VIF), y = VIF, fill = VIF)) +
+  geom_col(show.legend = FALSE) +
+  geom_hline(yintercept =  5, color = "orange", linetype = "dashed", linewidth = 1) +
+  geom_hline(yintercept = 10, color = "red",    linetype = "dashed", linewidth = 1) +
+  annotate("text", x = 0.6, y =  5.4, label = "VIF = 5",  color = "orange", hjust = 0) +
+  annotate("text", x = 0.6, y = 10.4, label = "VIF = 10", color = "red",    hjust = 0) +
+  scale_fill_gradient(low = "steelblue", high = "tomato") +
+  coord_flip() +
+  labs(title = "VIF Bar Chart", x = "Predictor",
+       y = "Variance Inflation Factor (VIF)") +
+  theme_minimal(base_size = 13)
+```
+
+Correlations approaching ±0.80 between predictors are concerning. RPQ_3 and RPQ_13 are likely to be moderately correlated given they are subscales of the same instrument. VIF > 5 indicates moderate concern; VIF > 10 indicates serious multicollinearity that inflates standard errors and destabilises coefficient estimates.
+
+> **Verdict:** *Given the lack of severe multicollinearity violations, the assumption appears to be met.*  
+
+---
+
+### 6. Fixed Predictors
+
+**Predictor Distributions**
+
+```{r fixed-predictors, fig.height=5.5}
+p_AGE  <- ggplot(presentation_data, aes(x = AGE)) +
+  geom_histogram(fill = "steelblue", color = "white", bins = 20) +
+  labs(title = "AGE", x = "Age (years)", y = "Count") +
+  theme_minimal(base_size = 11)
+
+p_dhi  <- ggplot(presentation_data, aes(x = DHI)) +
+  geom_histogram(fill = "steelblue", color = "white", bins = 20) +
+  labs(title = "DHI", x = "DHI Score", y = "Count") +
+  theme_minimal(base_size = 11)
+
+p_r3   <- ggplot(presentation_data, aes(x = RPQ_3)) +
+  geom_histogram(fill = "steelblue", color = "white", bins = 20) +
+  labs(title = "RPQ_3", x = "RPQ_3 Score", y = "Count") +
+  theme_minimal(base_size = 11)
+
+p_r13  <- ggplot(presentation_data, aes(x = RPQ_13)) +
+  geom_histogram(fill = "steelblue", color = "white", bins = 20) +
+  labs(title = "RPQ_13", x = "RPQ_13 Score", y = "Count") +
+  theme_minimal(base_size = 11)
+
+p_days <- ggplot(presentation_data, aes(x = DaysSinceLastConcussion)) +
+  geom_histogram(fill = "steelblue", color = "white", bins = 20) +
+  labs(title = "Days Since Concussion", x = "Days", y = "Count") +
+  theme_minimal(base_size = 11)
+
+p_sex  <- ggplot(presentation_data,
+                 aes(x = factor(Sex_Recode_F1M0,
+                                labels = c("Male", "Female")))) +
+  geom_bar(fill = c("steelblue", "tomato"), color = "white") +
+  labs(title = "Sex", x = "Sex", y = "Count") +
+  theme_minimal(base_size = 11)
+
+grid.arrange(p_AGE, p_dhi, p_r3, p_r13, p_days, p_sex, ncol = 3,
+             top = "Predictor Distributions")
+```
+
+Distributions should be plausible and free of implausible extreme values that would suggest data-entry errors or gross measurement anomalies. Extreme outliers in any continuous predictor can exert undue leverage on the regression solution.
+
+> **Verdict:** *(Update after inspecting plots)*  
+> **If violated:** Investigate flagged observations individually. Winsorisation or case deletion with sensitivity analysis are options for confirmed outliers.
+
+---
+
+# f) Conclusion & Interpretation
+
+```{r model-fit, include=FALSE}
+s      <- summary(model)
+r2     <- round(s$r.squared, 3)
+adj_r2 <- round(s$adj.r.squared, 3)
+fstat  <- round(s$fstatistic[1], 2)
+fdf1   <- s$fstatistic[2]
+fdf2   <- s$fstatistic[3]
+fp     <- round(pf(s$fstatistic[1], fdf1, fdf2, lower.tail = FALSE), 3)
+```
+
+**Overall model fit:** The model accounted for **R² = `r r2`** of the variance in scene timing performance (adjusted R² = `r adj_r2`), *F*(`r fdf1`, `r fdf2`) = `r fstat`, *p* = `r fp`.
+
+**Coefficient table** (significant predictors highlighted):
+
+```{r conclusion-table}
+coef_df2 <- as.data.frame(summary(model)$coefficients)
+coef_df2 <- round(coef_df2, 3)
+coef_df2$Predictor <- c("Intercept", "AGE", "Sex (F=1, M=0)",
+                         "DHI", "RPQ_3", "RPQ_13",
+                         "Days Since Last Concussion")
+coef_df2 <- coef_df2[, c("Predictor", "Estimate", "Std. Error", "t value", "Pr(>|t|)")]
+names(coef_df2) <- c("Predictor", "b", "SE", "t", "p")
+
+kable(coef_df2, align = "lrrrr") |>
+  kable_styling(full_width = FALSE,
+                bootstrap_options = c("striped", "hover")) |>
+  row_spec(which(coef_df2$p < .05), bold = TRUE, color = "white",
+           background = "#2166AC")
+```
+
+A positive *b* coefficient indicates that higher scores on that variable are associated with a slower (worse) scene timing composite, holding all other predictors constant. Rows highlighted in blue are statistically significant at *p* < .05.
+
+**Assumptions summary:**
+
+```{r assumptions-summary}
+assumptions <- data.frame(
+  Assumption       = c("Linearity", "Normality", "Homoscedasticity",
+                       "Independence", "Multicollinearity", "Fixed Predictors"),
+  Method           = c("Residuals vs Fitted + avPlots",
+                       "Q-Q plot",
+                       "Scale-Location plot",
+                       "Index plot",
+                       "Correlation heat map + VIF",
+                       "Histograms"),
+  "Verdict for Main Effects Model"          = rep("Non-violated", 6),
+  "Verdict for Interaction Model"           = rep("Non-violated", 6),
+  check.names = FALSE
+)
+
+kable(assumptions) |>
+  kable_styling(full_width = TRUE,
+                bootstrap_options = c("striped", "hover"))
+```
