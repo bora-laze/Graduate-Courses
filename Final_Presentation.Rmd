@@ -45,20 +45,65 @@ model <- lm(`8TimingComp` ~ AGE + Sex_Recode_F1M0 + DHI + RPQ_3 + RPQ_13 +
 
 # a) Research Problem & Theoretical Rationale
 
-Concussion is a mild traumatic brain injury that disrupts cognitive and sensorimotor processing. Individuals recovering from concussion commonly experience dizziness, impaired balance, slowed reaction times, and difficulties with visual-spatial navigation — all of which may impair performance on timed, real-world tasks.
+## {.tabset}
 
-The **scene timing composite** (8TimingComp) captures the efficiency with which a participant completes a structured scene task, providing an ecologically valid index of functional performance. We hypothesise that **post-concussion symptom severity** — as measured by validated clinical scales — will predict slower (i.e., worse) performance on this task, over and above the effects of demographic characteristics and time since injury.
+### Concussion and persistent post-concussion symptoms
+
+Concussion is a type of mild traumatic brain injury (mTBI) 
+- Symptoms include headaches, nausea, impaired balance, double vision, sensory sensitivities, impaired memory and concentration, irritability
+- Expected recovery period is 7-10 days
+
+Persistent post-concussion symptoms
+- Experienced by 10-20% of individuals following concussion
+- Can last for weeks, months, or years
+- Working-aged adults, especially females, are underrepresented in PPCS research
+
+---
+
+### Cognitive-motor integration
+
+Cognitive-motor integration (CMI)
+- Unconscious process of integrating visual information and motor planning to execute movement
+- Studies have found that CMI performance is impaired following concussion 
+- Sex differences in CMI performance in working-aged adults with PPCS are not yet well understood
+
+---
+
+### Aim and hypotheses
+
+Aim: Examine the relationships between CMI performance, symptom burden, and sex in a sample of 41 working-aged adults with PPCS (24 female, 29-64 years, mean 47.2 +/- 9.2)
+
+Hypotheses: 
+
+1. Post-concussion symptom severity will predict worse performance (higher timing composite scores) on a CMI task.
+2. Females will show worse performance on the CMI task than males.
 
 ---
 
 # b) Variables
+
+## {.tabset}
+
+### CMI Task
+
+Sliding index finger along a touchpad to move a cursor from a presented central target to a peripheral target (up, down, left, or right)
+- Plane change: the finger movement is on a horizontally placed touchpad, whereas the task and cursor movement are presented on the vertical plane of the laptop screen
+- Feedback reversal: the cursor moves in the opposite direction as the finger
+- 20 trials
+
+Timing composite score: an addition of three z-standardized timing measures
+- Reaction time (ms)
+- Full movement time (ms)
+- Peak velocity (mm/ms)
+
+---
 
 **Criterion variable**
 
 ```{r criterion-table}
 criterion <- data.frame(
   Variable    = "8TimingComp",
-  Description = "Scene completion time composite",
+  Description = "Timing composite",
   Scale       = "Continuous (z-scored composite; higher = slower performance)"
 )
 kable(criterion) |>
