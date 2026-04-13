@@ -145,7 +145,7 @@ The model takes the form:
 
 $$\hat{Y} = b_0 + b_1(\text{AGE}) + b_2(\text{Sex}) + b_3(\text{DHI}) + b_4(\text{RPQ\_3}) + b_5(\text{RPQ\_13}) + b_6(\text{DaysSinceLastConcussion}) + \varepsilon$$
 
-Where $\hat{Y}$ is the predicted scene timing composite, $b_0$ is the intercept, $b_1$–$b_6$ are the unstandardised regression coefficients, and $\varepsilon$ is the residual error term.
+Where $\hat{Y}$ is the predicted timing composite score, $b_0$ is the intercept, $b_1$–$b_6$ are the unstandardised regression coefficients (for age, sex, DHI, RPQ-3, RPQ-13, and days since last concussion) and $\varepsilon$ is the residual error term.
 
 ```{r coef-table}
 coef_df <- as.data.frame(summary(model)$coefficients)
@@ -187,7 +187,7 @@ node_labels <- c(
   AGE = "AGE", Sex = "Sex",
   DaysSinceLastConcussion = "Days Since\nLast Concussion",
   DHI = "DHI", RPQ_3 = "RPQ_3", RPQ_13 = "RPQ_13",
-  TimingComp = "Scene Timing\nComposite"
+  TimingComp = "Timing\nComposite"
 )
 
 tidy_dagitty(dag) |>
@@ -201,7 +201,7 @@ tidy_dagitty(dag) |>
                        box.padding = 0.4, label.padding = 0.25,
                        fill = "white", colour = "black") +
   scale_color_brewer(palette = "Set2") +
-  labs(title = "DAG: Predictors of Scene Timing Composite") +
+  labs(title = "DAG: Predictors of Timing Composite") +
   theme_dag()
 ```
 
@@ -209,9 +209,9 @@ tidy_dagitty(dag) |>
 
 # d) Critical Test
 
-The critical elements are the **symptom severity predictors**: DHI, RPQ_3, and RPQ_13.
+The critical elements are the **symptom severity predictors**: DHI, RPQ-3, and RPQ-13.
 
-The central hypothesis is that **greater post-concussion symptom burden predicts worse (slower) scene timing performance**, even after controlling for age, sex, and days since last concussion. Specifically, we expect one or more of $b_3$ (DHI), $b_4$ (RPQ_3), and $b_5$ (RPQ_13) to be **positive and statistically significant** (*p* < .05), indicating that higher symptom scores are associated with a higher (worse) timing composite.
+The central hypothesis is that **greater post-concussion symptom burden predicts worse (slower) scene timing performance**, even after controlling for age, sex, and days since last concussion. Specifically, we expect one or more of $b_3$ (DHI), $b_4$ (RPQ-3), and $b_5$ (RPQ-13) to be **positive and statistically significant** (*p* < .05), indicating that higher symptom scores are associated with a higher (worse) timing composite.
 
 The inclusion of **DaysSinceLastConcussion** as a covariate is important: without it, the symptom coefficients could be confounded by recovery duration — symptom scores naturally decrease over time, and performance may improve independently of symptom level. Controlling for days since injury isolates the *concurrent* relationship between symptom severity and performance.
 
@@ -407,7 +407,7 @@ fdf2   <- s$fstatistic[3]
 fp     <- round(pf(s$fstatistic[1], fdf1, fdf2, lower.tail = FALSE), 3)
 ```
 
-**Overall model fit:** The model accounted for **R² = `r r2`** of the variance in scene timing performance (adjusted R² = `r adj_r2`), *F*(`r fdf1`, `r fdf2`) = `r fstat`, *p* = `r fp`.
+**Overall model fit:** The model accounted for **R² = `r r2`** of the variance in timing performance (adjusted R² = `r adj_r2`), *F*(`r fdf1`, `r fdf2`) = `r fstat`, *p* = `r fp`.
 
 **Coefficient table** (significant predictors highlighted):
 
@@ -428,6 +428,8 @@ kable(coef_df2, align = "lrrrr") |>
 ```
 
 A positive *b* coefficient indicates that higher scores on that variable are associated with a slower (worse) scene timing composite, holding all other predictors constant. Rows highlighted in blue are statistically significant at *p* < .05.
+
+After controlling for sex, DHI, RPQ-3, RPQ-13, and days since last concussion, age significantly predicts timing composite scores, such that older participants showed higher timing composite scores (worse CMI performance). 
 
 **Assumptions summary:**
 
